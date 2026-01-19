@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 
-# -------- Ultrasound Encoder (PRIVATE) --------
-class UltrasoundEncoder(nn.Module):
+# -------- Thermal Encoder (PRIVATE, NOT FEDERATED) --------
+class ThermalEncoder(nn.Module):
     def __init__(self, feature_dim=128):
         super().__init__()
 
         self.cnn = nn.Sequential(
-            nn.Conv2d(1, 32, 3, padding=1),
+            nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
 
@@ -31,9 +31,9 @@ class UltrasoundEncoder(nn.Module):
 
 
 # -------- Federated Client Model --------
-class UltrasoundClientModel(nn.Module):
+class ThermalClientModel(nn.Module):
     """
-    Encoder stays local (not federated)
+    Encoder stays local
     Classifier participates in federated learning
     """
     def __init__(self, encoder, num_classes=3):

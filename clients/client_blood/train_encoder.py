@@ -13,7 +13,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # ---------------------------------------
 
 # Dataset & Loader
-dataset = BloodDataset(CSV_PATH)
+dataset = BloodDataset(CSV_PATH, train=True)
 loader = DataLoader(
     dataset,
     batch_size=BATCH_SIZE,

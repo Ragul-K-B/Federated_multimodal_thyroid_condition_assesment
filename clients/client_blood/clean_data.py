@@ -66,7 +66,7 @@ labeled_df = df[
     (df["Target"] != "-")
 ].copy()
 
-labeled_df.to_csv("blood_features_with_labels.csv", index=False)
+labeled_df.to_csv("blood_data.csv", index=False)
 
 # ===============================
 # 10. Summary
@@ -76,7 +76,7 @@ print("✅ Cleaning & splitting completed\n")
 print("📁 blood_features_only.csv")
 print("   Shape:", features_only.shape)
 
-print("\n📁 blood_features_with_labels.csv")
+print("\n📁 blood_data.csv")
 print("   Shape:", labeled_df.shape)
 print("\nLabel distribution:")
 print(labeled_df["Target"].value_counts())
