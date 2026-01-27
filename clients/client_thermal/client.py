@@ -1,38 +1,53 @@
 import flwr as fl
 import torch
 import torch.nn as nn
-from shared.utils import get_parameters, set_parameters
+import os
+
+from glob_model import GlobModel
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 class ThermalFLClient(fl.client.NumPyClient):
-    def __init__(self, model, loader, device="cpu"):
-        self.model = model.to(device)
-        self.loader = loader
-        self.device = device
+    def __init__(self, model, features, labels):
+        self.model = model.to(DEVICE)
+        self.features = features.to(DEVICE)
+        self.labels = labels.to(DEVICE)
+
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
+        os.makedirs("models", exist_ok=True)
+
     def get_parameters(self, config=None):
-        return get_parameters(self.model)
+        return [v.cpu().numpy() for v in self.model.state_dict().values()]
 
     def set_parameters(self, parameters):
-        set_parameters(self.model, parameters)
+        state_dict = {
+            k: torch.tensor(v)
+            for k, v in zip(self.model.state_dict().keys(), parameters)
+        }
+        self.model.load_state_dict(state_dict)
+
+        # ⬇️ SAVE DOWNLOADED GLOBAL MODEL
+        torch.save(
+            self.model.state_dict(),
+            "models/latest_global.pth"
+        )
+        print("⬇️ Global model downloaded (thermal)")
 
     def fit(self, parameters, config):
         self.set_parameters(parameters)
         self.model.train()
 
-        for x, y in self.loader:
-            x, y = x.to(self.device), y.to(self.device)
+        self.optimizer.zero_grad()
+        outputs = self.model(self.features)
+        loss = self.criterion(outputs, self.labels)
+        loss.backward()
+        self.optimizer.step()
 
-            out = self.model(x)
-            loss = self.criterion(out, y)
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-        return self.get_parameters(), len(self.loader.dataset), {}
+        return self.get_parameters(), len(self.labels), {}
 
     def evaluate(self, parameters, config):
         self.set_parameters(parameters)
-        return 0.0, len(self.loader.dataset), {}
+        return 0.0, len(self.labels), {}

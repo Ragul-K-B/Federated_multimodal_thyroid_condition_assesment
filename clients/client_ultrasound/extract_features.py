@@ -1,36 +1,46 @@
 import os
 import torch
-import pandas as pd
 from dataloader import get_dataloader
 from model import UltrasoundEncoder
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# ================= PATH =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
 DATA_DIR = os.path.join(ROOT_DIR, "ultrasound_organized")
-MODEL_PATH = os.path.join(BASE_DIR, "ultrasound_encoder.pth")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# ================= LOAD DATA =================
+loader = get_dataloader(DATA_DIR)
 
-loader = get_dataloader(DATA_DIR, batch_size=1, shuffle=False)
+# ================= LOAD ENCODER =================
+encoder = UltrasoundEncoder().to(DEVICE)
+encoder.load_state_dict(
+    torch.load("ultrasound_encoder.pth", map_location=DEVICE)
+)
+encoder.eval()
 
-model = UltrasoundEncoder().to(device)
-model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-model.eval()
+all_features = []
+all_labels = []
 
-features, labels = [], []
-
+# ================= FEATURE EXTRACTION =================
 with torch.no_grad():
-    for imgs, lbls in loader:
-        imgs = imgs.to(device)
-        emb = model(imgs, extract_features=True)
+    for imgs, labels in loader:
+        imgs = imgs.to(DEVICE)
+        features = encoder(imgs)   # (batch, 128)
 
-        features.append(emb.cpu().numpy()[0])
-        labels.append(lbls.item())
+        all_features.append(features.cpu())
+        all_labels.append(labels.cpu())
 
-df = pd.DataFrame(features)
-df["label"] = labels
+# ================= CONCAT =================
+all_features = torch.cat(all_features, dim=0)
+all_labels = torch.cat(all_labels, dim=0)
 
-OUT_CSV = os.path.join(BASE_DIR, "ultrasound_features_with_labels.csv")
-df.to_csv(OUT_CSV, index=False)
+print("Final feature shape:", all_features.shape)
+print("Final labels shape:", all_labels.shape)
 
-print("✅ Ultrasound feature extraction completed")
+# ================= SAVE =================
+torch.save(all_features, "ultrasound_features.pt")
+torch.save(all_labels, "ultrasound_labels.pt")
+
+print("✅ Features & labels saved successfully")

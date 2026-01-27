@@ -1,82 +1,42 @@
 import pandas as pd
 
-# ===============================
-# 1. Load dataset
-# ===============================
-df = pd.read_csv("R:\\final_proj\\thyroid\\thyroidDF.csv")
+# -------- File paths --------
+input_file = "blood_data.csv"
+output_file = "blood_data_grouped.csv"
 
-# ===============================
-# 2. Standardize column names
-# ===============================
-df.columns = df.columns.str.strip().str.lower()
+# -------- Target grouping (STRING LABELS) --------
+label_map = {
+    # Normal
+    "S": "normal",
+    "I": "normal",
 
-# ===============================
-# 3. Rename required columns
-# ===============================
-df = df.rename(columns={
-    "age": "Age",
-    "sex": "Gender",
-    "tsh": "TSH",
-    "t3": "T3",
-    "tt4": "T4",
-    "target": "Target"
-})
+    # Hypothyroid
+    "G": "hypo",
+    "R": "hypo",
+    "B": "hypo",
+    "N": "hypo",
+    "D": "hypo",
 
-# ===============================
-# 4. Keep ONLY required columns
-# ===============================
-required_cols = ["Age", "Gender", "TSH", "T3", "T4", "Target"]
-df = df[required_cols]
+    # Hyperthyroid
+    "A": "hyper",
+    "F": "hyper",
+    "M": "hyper",
+    "K": "hyper",
+    "L": "hyper",
+}
 
-# ===============================
-# 5. Encode Gender
-# ===============================
-df["Gender"] = df["Gender"].map({"F": 0, "M": 1})
+# -------- Load CSV --------
+df = pd.read_csv(input_file)
 
-# ===============================
-# 6. Convert numeric columns safely
-# ===============================
-num_cols = ["Age", "TSH", "T3", "T4"]
-for col in num_cols:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+# -------- Keep only valid targets --------
+df = df[df["Target"].isin(label_map.keys())].copy()
 
-# ===============================
-# 7. Handle missing FEATURE values
-#    (median is medically safe)
-# ===============================
-for col in num_cols:
-    median_val = df[col].median()
-    df[col] = df[col].fillna(median_val)
+# -------- Change Target values --------
+df["Target"] = df["Target"].map(label_map)
 
-# Drop rows where Gender is still missing
-df = df.dropna(subset=["Gender"])
+# -------- Save new CSV --------
+df.to_csv(output_file, index=False)
 
-# ===============================
-# 8. DATASET 1 — FEATURES ONLY
-# ===============================
-features_only = df[["Age", "Gender", "TSH", "T3", "T4"]]
-features_only.to_csv("blood_data.csv", index=False)
-
-# ===============================
-# 9. DATASET 2 — FEATURES + LABELS
-#    Keep only valid targets
-# ===============================
-labeled_df = df[
-    df["Target"].notna() &
-    (df["Target"] != "-")
-].copy()
-
-labeled_df.to_csv("blood_data.csv", index=False)
-
-# ===============================
-# 10. Summary
-# ===============================
-print("✅ Cleaning & splitting completed\n")
-
-print("📁 blood_features_only.csv")
-print("   Shape:", features_only.shape)
-
-print("\n📁 blood_data.csv")
-print("   Shape:", labeled_df.shape)
-print("\nLabel distribution:")
-print(labeled_df["Target"].value_counts())
+print("Saved grouped dataset as:", output_file)
+print("\nTarget distribution:")
+print(df["Target"].value_counts())
